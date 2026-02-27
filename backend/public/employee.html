@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Employee Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="layout">
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <h2>VMS</h2>
+        <ul>
+            <li class="active">Dashboard</li>
+            <li>Products</li>
+            <li>My Orders</li>
+        </ul>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+
+        <div class="topbar">
+            <h1>Employee Dashboard</h1>
+            <button onclick="logout()">Logout</button>
+        </div>
+
+        <!-- Products Section -->
+        <div class="card">
+            <h3>Available Products</h3>
+
+            <table id="productTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Vendor</th>
+                        <th>Price</th>
+                        <th>Stock</th>
+                        <th>Quantity</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <!-- My Orders Section -->
+        <div class="card">
+            <h3>My Orders</h3>
+
+            <table id="orderTable">
+                <thead>
+                    <tr>
+                        <th>Order ID</th>
+                        <th>Vendor</th>
+                        <th>Total</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+    </div>
+
+</div>
+
+</body>
+
+<script>
+    if (!localStorage.getItem("userId")) {
+    window.location.href = "login.html";
+}
+
+const employee_id = localStorage.getItem("userId");
+function loadOrders() {
+
+    fetch(`http://localhost:5000/employee-orders/${employee_id}`)
+    .then(res => res.json())
+    .then(data => {
+
+        const tableBody = document.querySelector("#orderTable tbody");
+        tableBody.innerHTML = "";
+
+        data.forEach(order => {
+
+           const row = `
+<tr>
+    <td>${order.id}</td>
+    <td>${order.vendor_name}</td>
+    <td>${order.total_amount}</td>
+    <td>${order.status}</td>
+</tr>
+`;
+
+            tableBody.innerHTML += row;
+
+        });
+
+    });
+
+}
+
+// Load Products
+function loadProducts() {
+
+    fetch("http://localhost:5000/all-products")
+    .then(res => res.json())
+    .then(data => {
+
+        const tableBody = document.querySelector("#productTable tbody");
+        tableBody.innerHTML = "";
+
+        data.forEach(product => {
+
+            let stockDisplay;
+let orderButton;
+
+if (product.stock <= 0) {
+    stockDisplay = `<span class="badge out">Out of Stock</span>`;
+    orderButton = `<button disabled>Order</button>`;
+} 
+else if (product.stock <= 5) {
+    stockDisplay = `<span class="badge low">Low (${product.stock})</span>`;
+    orderButton = `<button onclick="placeOrder(${product.id})">Order</button>`;
+} 
+else {
+    stockDisplay = `<span class="badge in">${product.stock}</span>`;
+    orderButton = `<button onclick="placeOrder(${product.id})">Order</button>`;
+}
+
+const row = `
+<tr>
+    <td>${product.id}</td>
+    <td>${product.name}</td>
+    <td>${product.vendor_name}</td>
+    <td>${product.price}</td>
+    <td>${stockDisplay}</td>
+    <td>
+        <input type="number" id="qty-${product.id}" min="1" value="1">
+    </td>
+    <td>
+        ${orderButton}
+    </td>
+</tr>
+`;
+            tableBody.innerHTML += row;
+
+        });
+
+    });
+
+}
+
+// Place Order
+function placeOrder(product_id) {
+
+    const quantity = document.getElementById(`qty-${product_id}`).value;
+
+    fetch("http://localhost:5000/place-order", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ employee_id, product_id, quantity })
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert(data.message);
+    });
+}
+function logout() {
+    localStorage.clear();
+    window.location.href = "login.html";
+}
+loadProducts();
+loadOrders();
+</script>
+</body>
+</html>

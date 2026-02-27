@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Vendor Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="layout">
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <h2>VMS</h2>
+        <ul>
+            <li class="active">Dashboard</li>
+            <li>My Products</li>
+            <li>Orders</li>
+        </ul>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+
+        <div class="topbar">
+            <h1>Vendor Dashboard</h1>
+            <button onclick="logout()">Logout</button>
+        </div>
+
+        <!-- Add Product -->
+        <div class="card">
+            <h3>Add Product</h3>
+
+            <input type="text" id="name" placeholder="Product Name">
+            <input type="number" id="price" placeholder="Price">
+            <input type="number" id="cost_price" placeholder="Cost Price">
+            <input type="number" id="stock" placeholder="Stock Quantity">
+
+            <button id="addBtn" onclick="addProduct()">Add Product</button>
+        </div>
+
+        <!-- Product List -->
+        <div class="card">
+            <h3>My Products</h3>
+
+            <table id="productTable">
+                <thead>
+<tr>
+    <th>ID</th>
+    <th>Name</th>
+    <th>Price</th>
+    <th>Stock</th>
+    <th>Actions</th>
+</tr>
+</thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <!-- Orders -->
+        <div class="card">
+            <h3>Orders Received</h3>
+
+            <table id="orderTable">
+                <thead>
+                    <tr>
+    <th>Order ID</th>
+    <th>Employee</th>
+    <th>Product</th>
+    <th>Quantity</th>
+    <th>Total</th>
+    <th>Status</th>
+    <th>Update</th>
+</tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+    </div>
+
+</div>
+
+</body>
+<script>
+    if (!localStorage.getItem("userId")) {
+    window.location.href = "login.html";
+}
+
+const vendor_id = localStorage.getItem("userId");
+function loadOrders() {
+
+    fetch(`http://localhost:5000/vendor-orders/${vendor_id}`)
+    .then(res => res.json())
+    .then(data => {
+
+        const tableBody = document.querySelector("#orderTable tbody");
+        tableBody.innerHTML = "";
+
+        data.forEach(order => {
+
+           const row = `
+<tr>
+    <td>${order.id}</td>
+    <td>${order.employee_name}</td>
+    <td>${order.product_name}</td>
+    <td>${order.quantity}</td>
+    <td>${order.total_amount}</td>
+    <td>${order.status}</td>
+    <td>
+        <select onchange="updateStatus(${order.id}, this.value)">
+            <option value="Pending">Pending</option>
+            <option value="Approved">Approved</option>
+            <option value="Delivered">Delivered</option>
+        </select>
+    </td>
+</tr>
+`;
+            tableBody.innerHTML += row;
+
+        });
+
+    });
+
+}
+function updateStatus(order_id, status) {
+
+    fetch("http://localhost:5000/update-order-status", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ order_id, status })
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert(data.message);
+        loadOrders();
+    });
+
+}
+
+// Add Product
+function addProduct(forceUpdate = false) {
+
+    const vendor_id = localStorage.getItem("userId");
+
+    const name = document.getElementById("name").value;
+    const price = document.getElementById("price").value;
+    const cost_price = document.getElementById("cost_price").value;
+    const stock = document.getElementById("stock").value;
+
+    fetch("http://localhost:5000/add-product", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ vendor_id, name, price, cost_price, stock, forceUpdate })
+    })
+    .then(res => res.json())
+    .then(data => {
+
+        if (data.exists) {
+            const confirmUpdate = confirm("Product already exists. Update stock and price?");
+            if (confirmUpdate) {
+                addProduct(true);
+            }
+            return;
+        }
+
+        alert(data.message);
+        loadProducts();
+
+        document.getElementById("name").value = "";
+        document.getElementById("price").value = "";
+        document.getElementById("stock").value = "";
+    });
+
+}
+// Load Products
+function loadProducts() {
+
+    const vendor_id = localStorage.getItem("userId");
+
+    fetch(`http://localhost:5000/products/${vendor_id}`)
+    .then(res => res.json())
+    .then(data => {
+
+        const table = document.querySelector("#productTable tbody");
+
+        if (!table) {
+            console.log("Table body not found");
+            return;
+        }
+
+        table.innerHTML = "";
+
+        data.forEach(product => {
+
+            const row = `
+<tr>
+    <td>${product.id}</td>
+    <td><input type="text" value="${product.name}" id="name-${product.id}"></td>
+    <td><input type="number" value="${product.price}" id="price-${product.id}"></td>
+    <td><input type="number" value="${product.stock}" id="stock-${product.id}"></td>
+    <td>
+        <button onclick="updateProduct(${product.id})">Update</button>
+        <button onclick="deleteProduct(${product.id})">Delete</button>
+    </td>
+</tr>
+`;
+
+            table.innerHTML += row;
+        });
+
+    })
+    .catch(err => console.log("Error:", err));
+}
+function updateProduct(id) {
+
+    const name = document.getElementById(`name-${id}`).value;
+    const price = document.getElementById(`price-${id}`).value;
+    const cost_price = document.getElementById(`cost-${id}`).value;
+    const stock = document.getElementById(`stock-${id}`).value;
+
+    fetch("http://localhost:5000/update-product", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, name, price, cost_price, stock })
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert(data.message);
+        loadProducts();
+    });
+}
+function deleteProduct(id) {
+
+    if (!confirm("Are you sure you want to delete this product?")) return;
+
+    fetch("http://localhost:5000/delete-product", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id })
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert(data.message);
+        loadProducts();
+    });
+}
+function logout() {
+    localStorage.clear();
+    window.location.href = "login.html";
+}
+
+loadProducts();
+loadOrders();
+</script>
+
+</body>
+</html>

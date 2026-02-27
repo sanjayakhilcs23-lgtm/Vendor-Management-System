@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="layout">
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <h2>VMS</h2>
+        <ul>
+            <li class="active">Dashboard</li>
+            <li>Users</li>
+            <li>Orders</li>
+            <li>Products</li>
+        </ul>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+
+        <div class="topbar">
+            <h1>Admin Dashboard</h1>
+            <button onclick="logout()">Logout</button>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-container">
+            <div class="stat-card">
+                <h3>Total Users</h3>
+                <p id="totalUsers">0</p>
+            </div>
+
+            <div class="stat-card">
+                <h3>Vendors</h3>
+                <p id="totalVendors">0</p>
+            </div>
+
+            <div class="stat-card">
+                <h3>Employees</h3>
+                <p id="totalEmployees">0</p>
+            </div>
+
+            <div class="stat-card">
+                <h3>Products</h3>
+                <p id="totalProducts">0</p>
+            </div>
+
+            <div class="stat-card">
+                <h3>Orders</h3>
+                <p id="totalOrders">0</p>
+            </div>
+            <div class="stat-card">
+    <h3>Total Profit</h3>
+    <p id="totalProfit">₹0</p>
+</div>
+
+            <div class="stat-card">
+                <h3>Total Revenue</h3>
+                <p id="totalRevenue">₹0</p>
+            </div>
+        </div>
+
+        <!-- Pending Users -->
+        <div class="card">
+            <h3>Pending Users</h3>
+
+            <table id="userTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+    </div>
+
+</div>
+
+</body>
+<script>
+
+function loadStats() {
+
+    fetch("http://localhost:5000/admin-stats")
+    .then(res => res.json())
+    .then(data => {
+
+        console.log("Admin Stats:", data); // debug
+
+        document.getElementById("totalUsers").innerText = data.totalUsers;
+        document.getElementById("totalVendors").innerText = data.totalVendors;
+        document.getElementById("totalEmployees").innerText = data.totalEmployees;
+        document.getElementById("totalProducts").innerText = data.totalProducts;
+        document.getElementById("totalOrders").innerText = data.totalOrders;
+
+        // ✅ FIXED LINE (THIS WAS MISSING)
+        document.getElementById("totalProfit").innerText = "₹" + data.totalProfit;
+
+        document.getElementById("totalRevenue").innerText = "₹" + data.totalRevenue;
+
+    });
+
+}
+
+// Load Pending Users
+function loadUsers() {
+
+    fetch("http://localhost:5000/pending-users")
+    .then(res => res.json())
+    .then(data => {
+
+        const tableBody = document.querySelector("#userTable tbody");
+        tableBody.innerHTML = "";
+
+        data.forEach(user => {
+
+            const row = `
+                <tr>
+                    <td>${user.id}</td>
+                    <td>${user.name}</td>
+                    <td>${user.email}</td>
+                    <td>${user.role}</td>
+                    <td>
+                        <button onclick="approveUser(${user.id})">
+                            Approve
+                        </button>
+                    </td>
+                </tr>
+            `;
+
+            tableBody.innerHTML += row;
+        });
+
+    });
+}
+
+// Approve User
+function approveUser(id) {
+
+    fetch("http://localhost:5000/approve-user", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ id })
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert(data.message);
+        loadUsers();
+    });
+
+}
+
+function logout() {
+    localStorage.clear();
+    window.location.href = "login.html";
+}
+
+// Load data when page opens
+loadUsers();
+loadStats();
+
+</script>
+</body>
+</html>
